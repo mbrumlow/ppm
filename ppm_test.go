@@ -1,6 +1,8 @@
 package ppm
 
 import (
+	"bufio"
+	"bytes"
 	"os"
 	"testing"
 )
@@ -29,6 +31,34 @@ func TestDecodeComments(t *testing.T) {
 
 	if _, err := Decode(file); err != nil {
 		t.Errorf("Decode failed: %v\n", err.Error())
+	}
+
+}
+
+func TestDecodeMagic(t *testing.T) {
+
+	var magictest = []struct {
+		in    []byte
+		valid bool
+	}{
+		{[]byte{'P', '6'}, true},
+		{[]byte{' ', ' '}, false},
+		{[]byte{'6', 'P'}, false},
+		{[]byte{'p', '6'}, false},
+		{[]byte{'#', 'L'}, false},
+		{[]byte{}, false},
+	}
+
+	for _, tt := range magictest {
+		bb := bytes.NewBuffer(tt.in)
+		r := bufio.NewReader(bb)
+
+		if err := decodeMagic(r); tt.valid && err != nil {
+			t.Errorf("Failed to decode valid magic.")
+		} else if !tt.valid && err == nil {
+			t.Errorf("Decoded bad magic.")
+		}
+
 	}
 
 }

@@ -14,13 +14,9 @@ func Decode(r io.Reader) (image.Image, error) {
 
 func decode(r *bufio.Reader) (image.Image, error) {
 
-	// Check format header
-	for _, t := range []byte{'P', '6'} {
-		if c, err := r.ReadByte(); err != nil {
-			return nil, fmt.Errorf("Failed to read header: %v", err.Error())
-		} else if c != t {
-			return nil, fmt.Errorf("Invalid image format.")
-		}
+	// Check magic.
+	if err := decodeMagic(r); err != nil {
+		return nil, fmt.Errorf("Failed to decode magic: %v", err.Error())
 	}
 
 	// Read comments and white space.
@@ -69,4 +65,22 @@ func decode(r *bufio.Reader) (image.Image, error) {
 	}
 
 	return i, nil
+}
+
+func decodeMagic(r *bufio.Reader) error {
+
+	if c, err := r.ReadByte(); err != nil {
+		return fmt.Errorf("Failed to read header: %v", err.Error())
+	} else if c != 'P' {
+		return fmt.Errorf("Invalid magic; expected 'P'")
+	}
+
+	if c, err := r.ReadByte(); err != nil {
+		return fmt.Errorf("Failed to read header: %v", err.Error())
+	} else if c != '6' {
+		return fmt.Errorf("Invalid magic; expected '6'")
+	}
+
+	return nil
+
 }
