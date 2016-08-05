@@ -36,20 +36,7 @@ func decode(r *bufio.Reader) (image.Image, error) {
 	}
 
 	// Read the image data.
-	b := make([]byte, 3)
-	i := image.NewRGBA(image.Rect(0, 0, width, height))
-	for x := 0; x < width*height; x++ {
-
-		if _, err := io.ReadFull(r, b); err != nil {
-			return nil, fmt.Errorf("Failed to read image data: %v", err.Error())
-		}
-
-		i.Pix[x+0] = b[0]
-		i.Pix[x+1] = b[1]
-		i.Pix[x+2] = b[2]
-		i.Pix[x+0] = 0x00
-
-	}
+	i, err := decodeImage(r, width, height)
 
 	return i, nil
 }
@@ -117,4 +104,29 @@ func decodeFormat(r *bufio.Reader) (int, error) {
 	}
 
 	return rgb_color, nil
+}
+
+func decodeImage(r *bufio.Reader, width, height int) (image.Image, error) {
+
+	if width < 0 || height < 0 {
+		return nil, fmt.Errorf("Invalid image size.")
+	}
+
+	b := make([]byte, 3)
+	i := image.NewRGBA(image.Rect(0, 0, width, height))
+	for x := 0; x < width*height; x++ {
+
+		if _, err := io.ReadFull(r, b); err != nil {
+			return nil, fmt.Errorf("Failed to read image data: %v", err.Error())
+		}
+
+		i.Pix[x+0] = b[0]
+		i.Pix[x+1] = b[1]
+		i.Pix[x+2] = b[2]
+		i.Pix[x+0] = 0x00
+
+	}
+
+	return i, nil
+
 }

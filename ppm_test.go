@@ -3,37 +3,8 @@ package ppm
 import (
 	"bufio"
 	"bytes"
-	"os"
 	"testing"
 )
-
-// Test PPM image decoding with out comments in the header.
-func TestDecodeNoComments(t *testing.T) {
-
-	file, err := os.Open("images/im1.ppm")
-	if err != nil {
-		t.Errorf("Failed to open test image: %v\n", err.Error())
-	}
-
-	if _, err := Decode(file); err != nil {
-		t.Errorf("Decode failed: %v\n", err.Error())
-	}
-
-}
-
-// Test PPM image decoding with comments in the header.
-func TestDecodeWithComments(t *testing.T) {
-
-	file, err := os.Open("images/im2.ppm")
-	if err != nil {
-		t.Errorf("Failed to open test image: %v\n", err.Error())
-	}
-
-	if _, err := Decode(file); err != nil {
-		t.Errorf("Decode failed: %v\n", err.Error())
-	}
-
-}
 
 // Test reading the magic.
 func TestDecodeMagic(t *testing.T) {
@@ -52,15 +23,15 @@ func TestDecodeMagic(t *testing.T) {
 		{"", false},
 	}
 
-	for _, tt := range magictest {
+	for i, tt := range magictest {
 
 		bb := bytes.NewBuffer([]byte(tt.in))
 		r := bufio.NewReader(bb)
 
 		if err := decodeMagic(r); tt.valid && err != nil {
-			t.Errorf("Failed to decode valid magic: %v", err)
+			t.Errorf("[%v] Failed to decode valid magic: %v", i, err)
 		} else if !tt.valid && err == nil {
-			t.Errorf("Decoded bad magic.")
+			t.Errorf("[%v] Decoded bad magic.", i)
 		}
 
 	}
@@ -81,15 +52,15 @@ func TestDecodeComments(t *testing.T) {
 		{"# comment 1\n#comment 2\n500 500", true},
 	}
 
-	for _, tt := range commenttest {
+	for i, tt := range commenttest {
 
 		bb := bytes.NewBuffer([]byte(tt.in))
 		r := bufio.NewReader(bb)
 
 		if err := decodeComments(r); tt.valid && err != nil {
-			t.Errorf("Failed to decode comments: %v", err)
+			t.Errorf("[%v] Failed to decode comments: %v", i, err)
 		} else if !tt.valid && err == nil {
-			t.Errorf("Decoded bad comments.")
+			t.Errorf("[%v] Decoded bad comments.", i)
 		}
 	}
 
@@ -112,17 +83,17 @@ func TestDecodeWidthHeight(t *testing.T) {
 		{"-1 -1\n", -1, -1, false},
 	}
 
-	for _, tt := range widthheighttest {
+	for i, tt := range widthheighttest {
 
 		bb := bytes.NewBuffer([]byte(tt.in))
 		r := bufio.NewReader(bb)
 
 		if width, height, err := decodeWidthHeight(r); tt.valid && err != nil {
-			t.Errorf("Failed to decode valid width/height: %v\n", err)
+			t.Errorf("[%v] Failed to decode valid width/height: %v\n", i, err)
 		} else if !tt.valid && err == nil {
-			t.Errorf("Decoded bad width/height.")
+			t.Errorf("[%v] Decoded bad width/height.", i)
 		} else if tt.valid && (width != tt.width || height != tt.height) {
-			t.Errorf("Wrong width/height.")
+			t.Errorf("[%v] Wrong width/height.", i)
 		}
 	}
 
@@ -149,11 +120,95 @@ func TestDecodeFormat(t *testing.T) {
 		r := bufio.NewReader(bb)
 
 		if format, err := decodeFormat(r); tt.valid && err != nil {
-			t.Errorf("Failed to decode valid format: %v\n", err)
+			t.Errorf("[%v] Failed to decode valid format: %v\n", i, err)
 		} else if !tt.valid && err == nil {
-			t.Errorf("Decoded bad format: %d.", i)
+			t.Errorf("[%v] Decoded bad format.", i)
 		} else if tt.valid && format != tt.format {
-			t.Errorf("Wrong format.")
+			t.Errorf("[%v] Wrong format.", i)
+		}
+
+	}
+
+}
+
+// Test reading image data.
+func TestDecodeImage(t *testing.T) {
+
+	var datatest = []struct {
+		width  int
+		height int
+		in     string
+		valid  bool
+	}{
+		{1, 1, "000", true},
+		{1, 1, "00", false},
+		{0, 0, "", true},
+		{-1, 0, "", false},
+		{0, -1, "", false},
+		{-1, -1, "", false},
+		{3, 1, "000111222", true},
+		{1, 3, "000111222", true},
+		{2, 2, "000111222333", true},
+	}
+
+	for i, tt := range datatest {
+
+		bb := bytes.NewBuffer([]byte(tt.in))
+		r := bufio.NewReader(bb)
+
+		if img, err := decodeImage(r, tt.width, tt.height); tt.valid && err != nil {
+			t.Errorf("[%v] Failed to decode valid format: %v\n", i, err)
+		} else if !tt.valid && err == nil {
+			t.Errorf("[%v] Decoded bad image.\n", i)
+		} else if tt.valid && err == nil &&
+
+			(img.Bounds().Min.X != 0 ||
+				img.Bounds().Min.Y != 0 ||
+				img.Bounds().Max.X != tt.width ||
+				img.Bounds().Max.Y != tt.height) {
+
+			t.Errorf("[%v] Wrong image size.\n", i)
+
+		}
+	}
+
+}
+
+// Test the full line up.
+func TestFull(t *testing.T) {
+
+	var fulltest = []struct {
+		in     string
+		width  int
+		height int
+		valid  bool
+	}{
+		{"P6\n1 1\n255\n000", 1, 1, true},
+		{"P6\n2 2\n255\n000111222333", 2, 2, true},
+		{"P6\n-1 -1\n255\n000111222333", -1, -1, false},
+		{"P6\n#a\n#b\n2 2\n255\n000111222333", 2, 2, true},
+		{"P6\n%a\n#b\n2 2\n255\n000111222333", 2, 2, false},
+		{"\n\n\n\n", 0, 0, false},
+	}
+
+	for i, tt := range fulltest {
+
+		bb := bytes.NewBuffer([]byte(tt.in))
+		r := bufio.NewReader(bb)
+
+		if img, err := Decode(r); tt.valid && err != nil {
+			t.Errorf("[%v] Failed to decode valid image: %v", i, err)
+		} else if !tt.valid && err == nil {
+			t.Errorf("[%v] Decoded bad image.", i)
+		} else if tt.valid && err == nil &&
+
+			(img.Bounds().Min.X != 0 ||
+				img.Bounds().Min.Y != 0 ||
+				img.Bounds().Max.X != tt.width ||
+				img.Bounds().Max.Y != tt.height) {
+
+			t.Errorf("[%v] Wrong image size.\n", i)
+
 		}
 
 	}
