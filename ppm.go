@@ -120,10 +120,11 @@ func decodeImage(r *bufio.Reader, width, height int) (image.Image, error) {
 			return nil, fmt.Errorf("Failed to read image data: %v", err.Error())
 		}
 
-		i.Pix[x+0] = b[0]
-		i.Pix[x+1] = b[1]
-		i.Pix[x+2] = b[2]
-		i.Pix[x+0] = 0x00
+		o := x * 4
+		i.Pix[o+0] = b[0]
+		i.Pix[o+1] = b[1]
+		i.Pix[o+2] = b[2]
+		i.Pix[o+3] = 0xFF
 
 	}
 

@@ -189,6 +189,7 @@ func TestFull(t *testing.T) {
 		{"P6\n#a\n#b\n2 2\n255\n000111222333", 2, 2, true},
 		{"P6\n%a\n#b\n2 2\n255\n000111222333", 2, 2, false},
 		{"\n\n\n\n", 0, 0, false},
+		{"2kj324lkj2lij2g32i", 0, 0, false},
 	}
 
 	for i, tt := range fulltest {
