@@ -4,8 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"image"
+	"image/color"
 	"io"
 )
+
+const pngHeader = "P6\n"
 
 func Decode(r io.Reader) (image.Image, error) {
 	b := bufio.NewReader(r)
@@ -129,5 +132,47 @@ func decodeImage(r *bufio.Reader, width, height int) (image.Image, error) {
 	}
 
 	return i, nil
+}
 
+func DecodeConfig(r io.Reader) (image.Config, error) {
+
+	b := bufio.NewReader(r)
+
+	// Read the header.
+	if err := decodeMagic(b); err != nil {
+
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+
+		return image.Config{}, err
+	}
+
+	// Read comments and white space.
+	if err := decodeComments(b); err != nil {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+		return image.Config{}, err
+	}
+
+	// Get the image size.
+	width, height, err := decodeWidthHeight(b)
+	if err != nil {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+		return image.Config{}, err
+	}
+
+	return image.Config{
+		// This decoder only works with color.RGBAModel
+		ColorModel: color.RGBAModel,
+		Width:      width,
+		Height:     height,
+	}, nil
+}
+
+func init() {
+	image.RegisterFormat("ppm", pngHeader, Decode, DecodeConfig)
 }
